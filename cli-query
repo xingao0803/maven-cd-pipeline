@@ -1,0 +1,2 @@
+jfrog rt s --server-id $1 --spec ./mavens.spec --sort-by created --sort-order desc --limit 3  | grep path | awk -F "/" '{print $NF}' | awk -F "\"" '{print $1}'
+
