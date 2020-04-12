@@ -95,24 +95,33 @@ node {
     
     stage('Deploy the Package') {
         sh "ls multi3*.war"
+ 
+        def path = sh returnStdout: true , script: "pwd"
+        path = path.trim()
 
-		def deployCmd = "ansible 127.0.0.1 -c local -m copy -a 'src=./${released}  dest=/home/tomcat/apache-tomcat-8.5.40/webapps/demo.war'"
-		echo deployCmd
-		process = [ 'bash', '-c', deployCmd].execute().text
+        //Deploying
+	def deployCmd = "ansible 127.0.0.1 -c local -m copy -a 'src=${path}/${released}  dest=/home/tomcat/apache-tomcat-8.5.40/webapps/demo.war'"
+	echo deployCmd
+	process = sh returnStdout: true , script: deployCmd
+	echo process
 		
-		sh "./jfrog rt sp --server-id=arti-server \"maven-pipeline-release-local/**/${released}\" \"deploy.tool=ansible;deploy.env=127.0.0.1\""
+	//Add Deployment Metadata
+	sh "./jfrog rt sp --server-id=arti-server \"maven-pipeline-release-local/**/${released}\" \"deploy.tool=ansible;deploy.env=127.0.0.1\""
         
+    
+        //Restarting Tomcat
+	def stopCmd = "ansible 127.0.0.1 -c local -m shell -a '/home/tomcat/apache-tomcat-8.5.40/bin/shutdown.sh'"
+	echo stopCmd
+	[ 'bash', '-c', stopCmd].execute().text
+		
+	def startCmd = "ansible 127.0.0.1 -c local -m shell -a '/home/tomcat/apache-tomcat-8.5.40/bin/startup.sh'"
+	echo startCmd
+	[ 'bash', '-c', startCmd].execute().text
         
-        // Deploying
-        
-		def stopCmd = "ansible 127.0.0.1 -c local -m shell -a '/home/tomcat/apache-tomcat-8.5.40/bin/shutdown.sh'"
-		echo stopCmd
-		[ 'bash', '-c', stopCmd].execute().text
-		def startCmd = "ansible 127.0.0.1 -c local -m shell -a '/home/tomcat/apache-tomcat-8.5.40/bin/startup.sh'"
-		echo startCmd
-		[ 'bash', '-c', startCmd].execute().text
-        
+        //ClearUp
         sh "rm multi3*.war"
+        sh "rm jfrog"
+
     }    
 	
 }	
